@@ -10,9 +10,10 @@
 //*****************************************************************
 // LIBRERIAS INCLUIDAS
 //*****************************************************************
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h> 
+#include <string.h>
 
 //*****************************************************************
 // DECLARACION DE ESTRUCTURAS
@@ -42,6 +43,13 @@ typedef struct BMP {
                           // dimensiones para almacenar los pixeles
 } BMP;
 
+// estructura de parametros de los hilos
+typedef struct params {
+  BMP *imagen;
+  int inicio_alto;
+  int fin_alto;
+} params;
+
 //*****************************************************************
 // DECLARACIÓN DE FUNCIONES
 //*****************************************************************
@@ -55,6 +63,10 @@ void crear_imagen(BMP *imagen, char ruta[]); // Función para crear una imagen
 void convertir1(BMP *imagen, int nhilos);
 void convertir2(BMP *imagen, int nhilos);
 void convertir3(BMP *imagen, int nhilos);
+
+void *hilos_convertir1(void *ptr);
+void *hilos_convertir2(void *ptr);
+void *hilos_convertir3(void *ptr);
 
 //*****************************************************************
 // PROGRAMA PRINCIPAL
@@ -274,53 +286,163 @@ void crear_imagen(BMP *imagen, char *ruta) {
 }
 
 void convertir1(BMP *imagen, int nhilos) {
+  pthread_t *thread = malloc(sizeof(pthread_t) * nhilos);
+  int altura_hilo, inicio_alto, fin_alto;
+  altura_hilo = imagen->alto / nhilos;
+  inicio_alto = 0;
+  fin_alto = altura_hilo;
+  
+  for(int i = 0; i < nhilos-1; i++) {
+    params *p = malloc(sizeof(params));
+    p->imagen = imagen;
+    p->inicio_alto = inicio_alto;
+    p->fin_alto = fin_alto;
+    
+    pthread_create(&thread[i], NULL, hilos_convertir1, p);
+    
+    inicio_alto += altura_hilo;
+    fin_alto += altura_hilo;
+  }
+  params *p = malloc(sizeof(params));
+  p->imagen = imagen;
+  p->inicio_alto = inicio_alto;
+  p->fin_alto = imagen->alto;
+  pthread_create(&thread[nhilos-1], NULL, hilos_convertir1, p);
+  
+  for(int i = 0; i < nhilos; i++) {
+    pthread_join(thread[i], NULL);
+  }
+  pthread_join(thread[nhilos-1], NULL);
+}
+
+void *hilos_convertir1(void *ptr) {
+  params *args = (params *)ptr;
+
+  //printf("\n\nhilo: inicio_alto = %d; fin_alto = %d\n\n", args->inicio_alto, args->fin_alto);
+
   int i, j, k;
 
   unsigned char temp;
 
-  for (i = 0; i < imagen->alto; i++) {
-    for (j = 0; j < imagen->ancho; j++) {
-      temp = (unsigned char)((imagen->pixel[i][j][2] * 0.3) +
-                             (imagen->pixel[i][j][1] * 0.59) +
-                             (imagen->pixel[i][j][0] * 0.11));
-      // temp = (unsigned char)((imagen->pixel[i][j][2] + imagen->pixel[i][j][1]
-      // + imagen->pixel[i][j][0]) / 3);
-
+  for (i = args->inicio_alto; i < args->fin_alto; i++) {
+    for (j = 0; j < args->imagen->ancho; j++) {
+      temp = (unsigned char)((args->imagen->pixel[i][j][2] * 0.3) +
+                             (args->imagen->pixel[i][j][1] * 0.59) +
+                             (args->imagen->pixel[i][j][0] * 0.11));
       for (k = 0; k < 3; k++)
-        imagen->pixel[i][j][k] = (unsigned char)temp; // Formula correcta
+        args->imagen->pixel[i][j][k] = (unsigned char)temp; // Formula correcta
     }
   }
+  free(args);
+  pthread_exit((void *)NULL);
 }
 
 void convertir2(BMP *imagen, int nhilos) {
+  pthread_t *thread = malloc(sizeof(pthread_t) * nhilos);
+  int altura_hilo, inicio_alto, fin_alto;
+  altura_hilo = imagen->alto / nhilos;
+  inicio_alto = 0;
+  fin_alto = altura_hilo;
+  
+  for(int i = 0; i < nhilos-1; i++) {
+    params *p = malloc(sizeof(params));
+    p->imagen = imagen;
+    p->inicio_alto = inicio_alto;
+    p->fin_alto = fin_alto;
+    
+    pthread_create(&thread[i], NULL, hilos_convertir2, p);
+    
+    inicio_alto += altura_hilo;
+    fin_alto += altura_hilo;
+  }
+  params *p = malloc(sizeof(params));
+  p->imagen = imagen;
+  p->inicio_alto = inicio_alto;
+  p->fin_alto = imagen->alto;
+  pthread_create(&thread[nhilos-1], NULL, hilos_convertir2, p);
+  
+  for(int i = 0; i < nhilos; i++) {
+    pthread_join(thread[i], NULL);
+  }
+  pthread_join(thread[nhilos-1], NULL);
+}
+
+void *hilos_convertir2(void *ptr) {
+  params *args = (params *)ptr;
+
+  //printf("\n\nhilo: inicio_alto = %d; fin_alto = %d\n\n", args->inicio_alto, args->fin_alto);
+
   int i, j, k;
 
   unsigned char temp;
 
-  for (i = 0; i < imagen->alto; i++) {
-    for (j = 0; j < imagen->ancho; j++) {
-      // temp = (unsigned
-      // char)((imagen->pixel[i][j][2]*0.3)+(imagen->pixel[i][j][1]*0.59)+
-      // (imagen->pixel[i][j][0]*0.11));
-      temp = (unsigned char)((imagen->pixel[i][j][2] + imagen->pixel[i][j][1] +
-                              imagen->pixel[i][j][0]) /
+  for (i = args->inicio_alto; i < args->fin_alto; i++) {
+    for (j = 0; j < args->imagen->ancho; j++) {
+      temp = (unsigned char)((args->imagen->pixel[i][j][2] +
+                              args->imagen->pixel[i][j][1] +
+                              args->imagen->pixel[i][j][0]) /
                              3);
-
       for (k = 0; k < 3; k++)
-        imagen->pixel[i][j][k] = (unsigned char)temp; // Formula correcta
+        args->imagen->pixel[i][j][k] = (unsigned char)temp; // Formula correcta
     }
   }
+  free(args);
+  pthread_exit((void *)NULL);
 }
 
 void convertir3(BMP *imagen, int nhilos) {
-  int i, j, k;
+   pthread_t *thread = malloc(sizeof(pthread_t) * nhilos);
+  int altura_hilo, inicio_alto, fin_alto;
+  altura_hilo = imagen->alto / nhilos;
+  inicio_alto = 0;
+  fin_alto = altura_hilo;
   
-  for (i = 0; i < imagen->alto; i++) {
-    for (j = 0; j < imagen->ancho; j++) {
-      //poner transformación aqui
-      imagen->pixel[i][j][1] = (unsigned char)imagen->pixel[i][j][1]*-1;//green 0.7
-      imagen->pixel[i][j][2] = (unsigned char)imagen->pixel[i][j][2]*1;//red 0.8
-      imagen->pixel[i][j][3] = (unsigned char)imagen->pixel[i][j][3]*-1;//blue 0.5
+  for(int i = 0; i < nhilos-1; i++) {
+    params *p = malloc(sizeof(params));
+    p->imagen = imagen;
+    p->inicio_alto = inicio_alto;
+    p->fin_alto = fin_alto;
+    
+    pthread_create(&thread[i], NULL, hilos_convertir3, p);
+    
+    inicio_alto += altura_hilo;
+    fin_alto += altura_hilo;
+  }
+  params *p = malloc(sizeof(params));
+  p->imagen = imagen;
+  p->inicio_alto = inicio_alto;
+  p->fin_alto = imagen->alto;
+  pthread_create(&thread[nhilos-1], NULL, hilos_convertir3, p);
+  
+  for(int i = 0; i < nhilos; i++) {
+    pthread_join(thread[i], NULL);
+  }
+  pthread_join(thread[nhilos-1], NULL);
+}
+
+void *hilos_convertir3(void *ptr) {
+  params *args = (params *)ptr;
+
+  //printf("\n\nhilo: inicio_alto = %d; fin_alto = %d\n\n", args->inicio_alto, args->fin_alto);
+
+  int i, j;
+
+  unsigned char temp;
+
+  for (i = args->inicio_alto; i < args->fin_alto; i++) {
+    for (j = 0; j < args->imagen->ancho; j++) {
+      temp = (unsigned char)((args->imagen->pixel[i][j][2] +
+                              args->imagen->pixel[i][j][1] +
+                              args->imagen->pixel[i][j][0]) /
+                             3);
+      args->imagen->pixel[i][j][1] =
+          (unsigned char)args->imagen->pixel[i][j][1] * -1; // green 0.7
+      args->imagen->pixel[i][j][2] =
+          (unsigned char)args->imagen->pixel[i][j][2] * 1; // red 0.8
+      args->imagen->pixel[i][j][3] =
+          (unsigned char)args->imagen->pixel[i][j][3] * -1; // blue 0.5
     }
   }
+  free(args);
+  pthread_exit((void *)NULL);
 }

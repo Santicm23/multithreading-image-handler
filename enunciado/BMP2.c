@@ -58,7 +58,7 @@ void abrir_imagen(BMP *imagen, char ruta[]);		//Función para abrir la imagen BM
 void crear_imagen(BMP *imagen, char ruta[]);	//Función para crear una imagen BMP
 void convertir_imagen(BMP *imagen,int nhilos); //2 sera el numero de hilos		
 
-/*********************************************************************************************************
+//*********************************************************************************************************
 //PROGRAMA PRINCIPAL 
 //*********************************************************************************************************/
 int main (int argc, char* argv[])
